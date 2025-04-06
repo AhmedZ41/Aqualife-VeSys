@@ -66,11 +66,11 @@ public class Broker {
                 }
                 
             } else if (payload instanceof HandoffRequest){
-                lock.writeLock().lock();
+                lock.readLock().lock();
                 try {
                     handoffFish(message);
                 } finally {
-                    lock.writeLock().unlock();
+                    lock.readLock().unlock();
                 }
             } else if (payload instanceof PoisonPill) {
                 System.out.println("Poison pill received. Shutting down broker...");
