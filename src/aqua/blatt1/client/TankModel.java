@@ -1,5 +1,6 @@
 package aqua.blatt1.client;
 
+import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Observable;
@@ -21,6 +22,9 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
 	protected final ClientCommunicator.ClientForwarder forwarder;
+	private InetSocketAddress leftNeighbor;
+	private InetSocketAddress rightNeighbor;
+
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
@@ -97,5 +101,22 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public synchronized void finish() {
 		forwarder.deregister(id);
 	}
+
+	public synchronized void setLeftNeighbor(InetSocketAddress neighbor) {
+		this.leftNeighbor = neighbor;
+	}
+
+	public synchronized void setRightNeighbor(InetSocketAddress neighbor) {
+		this.rightNeighbor = neighbor;
+	}
+
+	public synchronized InetSocketAddress getLeftNeighbor() {
+		return leftNeighbor;
+	}
+
+	public synchronized InetSocketAddress getRightNeighbor() {
+		return rightNeighbor;
+	}
+
 
 }
