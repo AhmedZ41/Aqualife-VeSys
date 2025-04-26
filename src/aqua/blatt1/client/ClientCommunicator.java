@@ -2,6 +2,7 @@ package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
 
+import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
@@ -18,8 +19,11 @@ public class ClientCommunicator {
 	public class ClientForwarder {
 		private final InetSocketAddress broker;
 
-		private ClientForwarder() {
+		private final TankModel tankModel;
+
+		private ClientForwarder(TankModel tankModel) {
 			this.broker = new InetSocketAddress(Properties.HOST, Properties.PORT);
+			this.tankModel = tankModel;
 		}
 
 		public void register() {
@@ -31,8 +35,22 @@ public class ClientCommunicator {
 		}
 
 		public void handOff(FishModel fish) {
-			endpoint.send(broker, new HandoffRequest(fish));
+			InetSocketAddress neighbor;
+
+			if (fish.getDirection() == Direction.RIGHT) {
+				neighbor = tankModel.getRightNeighbor();
+			} else {
+				neighbor = tankModel.getLeftNeighbor();
+			}
+
+			if (neighbor != null) {
+				endpoint.send(neighbor, new HandoffRequest(fish));
+				System.out.println("Sent fish to " + (fish.getDirection() == Direction.RIGHT ? "right" : "left") + " neighbor: " + neighbor);
+			} else {
+				System.out.println("No neighbor available to send fish.");
+			}
 		}
+
 	}
 
 	public class ClientReceiver extends Thread {
@@ -68,8 +86,8 @@ public class ClientCommunicator {
 
 	}
 
-	public ClientForwarder newClientForwarder() {
-		return new ClientForwarder();
+	public ClientForwarder newClientForwarder(TankModel tankModel) {
+		return new ClientForwarder(tankModel);
 	}
 
 	public ClientReceiver newClientReceiver(TankModel tankModel) {

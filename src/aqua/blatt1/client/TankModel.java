@@ -21,7 +21,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected volatile String id;
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
-	protected final ClientCommunicator.ClientForwarder forwarder;
+	protected ClientCommunicator.ClientForwarder forwarder;
 	private InetSocketAddress leftNeighbor;
 	private InetSocketAddress rightNeighbor;
 
@@ -117,6 +117,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public synchronized InetSocketAddress getRightNeighbor() {
 		return rightNeighbor;
 	}
+
+	public synchronized void setForwarder(ClientCommunicator.ClientForwarder forwarder) {
+		this.forwarder = forwarder;
+	}
+
 
 
 }
