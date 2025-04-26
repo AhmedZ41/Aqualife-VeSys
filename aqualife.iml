@@ -8,5 +8,14 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="messaging" level="project" />
+    <orderEntry type="module-library" exported="">
+      <library>
+        <CLASSES />
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$MODULE_DIR$/../aqua-blatt2-poison-src.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
   </component>
 </module>

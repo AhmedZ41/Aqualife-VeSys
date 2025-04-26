@@ -4,6 +4,8 @@
       <root url="jar://$PROJECT_DIR$/../messaging.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/../aqua-blatt2-poison-src.jar!/" />
+    </SOURCES>
   </library>
 </component>

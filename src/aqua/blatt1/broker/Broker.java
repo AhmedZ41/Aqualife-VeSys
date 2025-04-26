@@ -2,9 +2,11 @@ package aqua.blatt1.broker;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
+import aqua.blatt1.common.PoisonPill;
 import messaging.Endpoint;
 import messaging.Message;
 import aqua.blatt1.common.msgtypes.*;
+
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -64,12 +66,16 @@ public class Broker {
                 }
                 
             } else if (payload instanceof HandoffRequest){
-                lock.writeLock().lock();
+                lock.readLock().lock();
                 try {
                     handoffFish(message);
                 } finally {
-                    lock.writeLock().unlock();
+                    lock.readLock().unlock();
                 }
+            } else if (payload instanceof PoisonPill) {
+                System.out.println("Poison pill received. Shutting down broker...");
+                stopRequested = true;
+                return;
             }
 
         }
