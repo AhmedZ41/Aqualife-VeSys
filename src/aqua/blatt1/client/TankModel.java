@@ -24,6 +24,9 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected ClientCommunicator.ClientForwarder forwarder;
 	private InetSocketAddress leftNeighbor;
 	private InetSocketAddress rightNeighbor;
+	private boolean hasToken = false;
+	private java.util.Timer tokenTimer;
+
 
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
@@ -71,13 +74,20 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 			fish.update();
 
-			if (fish.hitsEdge())
-				forwarder.handOff(fish);
+			if (fish.hitsEdge()) {
+				// If we have the token, send the fish to the neighbor
+				if (hasToken()) {
+					forwarder.handOff(fish);
+				} else {
+					fish.reverse(); // Reverse direction if no token
+				}
+			}
 
 			if (fish.disappears())
 				it.remove();
 		}
 	}
+
 
 	private synchronized void update() {
 		updateFishies();
@@ -121,6 +131,35 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public synchronized void setForwarder(ClientCommunicator.ClientForwarder forwarder) {
 		this.forwarder = forwarder;
 	}
+
+	public synchronized void receiveToken() {
+		hasToken = true; // Now we have the token
+		System.out.println("Token received.");
+
+		tokenTimer = new java.util.Timer();
+		tokenTimer.schedule(new java.util.TimerTask() {
+			@Override
+			public void run() {
+				synchronized (TankModel.this) {
+					hasToken = false; // After holding token, release it
+					sendToken(); // Pass token to left neighbor
+				}
+			}
+		}, 2000); // Wait for 2 seconds (2000 milliseconds)
+	}
+	public synchronized void sendToken() {
+		if (leftNeighbor != null) {
+			forwarder.sendToken(leftNeighbor);
+			System.out.println("Token sent to left neighbor: " + leftNeighbor);
+		} else {
+			System.out.println("No left neighbor to send token!");
+		}
+	}
+	public synchronized boolean hasToken() {
+		return hasToken;
+	}
+
+
 
 
 
