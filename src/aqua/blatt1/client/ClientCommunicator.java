@@ -51,6 +51,10 @@ public class ClientCommunicator {
 			}
 		}
 
+		public void sendToken(InetSocketAddress neighbor) {
+			endpoint.send(neighbor, new Token());
+		}
+
 	}
 
 	public class ClientReceiver extends Thread {
@@ -80,6 +84,10 @@ public class ClientCommunicator {
 						System.out.println("Updated right neighbor to: " + neighborUpdate.getNeighborAddress());
 					}
 				}
+				else if (payload instanceof Token) {
+					tankModel.receiveToken();
+				}
+
 			}
 			System.out.println("Receiver stopped.");
 		}
