@@ -110,10 +110,18 @@ public class Broker {
         // Inform the right neighbor about its new left neighbor (the new client)
         endpoint.send(rightNeighbor, new NeighborUpdate(clientAddress, true)); // true = left
 
+        // Send RegisterResponse to the newly registered client
         endpoint.send(clientAddress, new RegisterResponse(clientId));
 
         System.out.println("Registered: " + clientId + " at " + clientAddress);
+
+        // 🔥 NEW: If this is the first client, send it the first Token
+        if (clients.size() == 1) {
+            endpoint.send(clientAddress, new Token());
+            System.out.println("First Token sent to: " + clientAddress);
+        }
     }
+
 
     private void deregister(Message message) {
         DeregisterRequest request = (DeregisterRequest) message.getPayload();
