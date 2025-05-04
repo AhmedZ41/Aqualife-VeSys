@@ -96,7 +96,10 @@ public class ClientCommunicator {
 					tankModel.receiveToken();
 				} else if (payload instanceof SnapshotMarker) {
 					tankModel.receiveSnapshotMarker(msg.getSender());
+				}else if (payload instanceof SnapshotToken) {
+					tankModel.receiveSnapshotToken((SnapshotToken) payload);
 				}
+
 
 
 			}

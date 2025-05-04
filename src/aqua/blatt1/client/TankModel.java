@@ -11,6 +11,9 @@ import java.util.concurrent.TimeUnit;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
+import aqua.blatt1.common.msgtypes.SnapshotToken;
+
+import javax.swing.*;
 
 public class TankModel extends Observable implements Iterable<FishModel> {
 
@@ -109,6 +112,22 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	private String getIdByAddress(InetSocketAddress address) {
 		return address.toString(); // or a cleaner mapping if needed
 	}
+
+	public synchronized void receiveSnapshotToken(SnapshotToken token) {
+		token.addCount(snapshotLocalCount); // Add local count
+
+		if (snapshotInitiator) {
+			// I'm the initiator — show the result
+			snapshotInitiator = false; // Reset flag
+			recordingState = RecordingState.IDLE; // Reset state
+			JOptionPane.showMessageDialog(null, "Global Snapshot: " + token.getTotalCount() + " fish");
+		} else {
+			// Forward to left neighbor
+			forwarder.sendSnapshotToken(leftNeighbor, token.getTotalCount());
+			System.out.println("Forwarded SnapshotToken with total = " + token.getTotalCount());
+		}
+	}
+
 
 
 
