@@ -55,6 +55,11 @@ public class ClientCommunicator {
 			endpoint.send(neighbor, new Token());
 		}
 
+		public void sendSnapshotMarker(InetSocketAddress neighbor) {
+			endpoint.send(neighbor, new SnapshotMarker());
+		}
+
+
 	}
 
 	public class ClientReceiver extends Thread {
