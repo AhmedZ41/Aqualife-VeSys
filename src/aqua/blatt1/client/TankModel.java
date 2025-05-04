@@ -169,6 +169,29 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		return hasToken;
 	}
 
+	public synchronized void initiateSnapshot() {
+		System.out.println("Snapshot initiated.");
+
+		// Save current local state (number of fish)
+		snapshotLocalCount = fishies.size();
+		snapshotInitiator = true;
+
+		// Start recording both input channels
+		recordingState = RecordingState.BOTH;
+
+		// Send SnapshotMarker to both neighbors
+		if (leftNeighbor != null) {
+			forwarder.sendSnapshotMarker(leftNeighbor);
+			System.out.println("Sent SnapshotMarker to LEFT neighbor: " + leftNeighbor);
+		}
+
+		if (rightNeighbor != null) {
+			forwarder.sendSnapshotMarker(rightNeighbor);
+			System.out.println("Sent SnapshotMarker to RIGHT neighbor: " + rightNeighbor);
+		}
+	}
+
+
 
 
 
