@@ -26,6 +26,16 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	private InetSocketAddress rightNeighbor;
 	private boolean hasToken = false;
 	private java.util.Timer tokenTimer;
+	// Enum for tracking input channels during snapshot recording
+	private enum RecordingState {
+		IDLE, LEFT, RIGHT, BOTH
+	}
+	// --- Snapshot-related state ---
+	private RecordingState recordingState = RecordingState.IDLE; // Which channels are being recorded
+	private int snapshotLocalCount = 0;         // How many fish we had when snapshot started
+	private boolean snapshotInitiator = false;  // True if we initiated the global snapshot
+
+
 
 
 
