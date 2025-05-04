@@ -59,6 +59,9 @@ public class ClientCommunicator {
 			endpoint.send(neighbor, new SnapshotMarker());
 		}
 
+		public void sendSnapshotToken(InetSocketAddress neighbor, int localCount) {
+			endpoint.send(neighbor, new SnapshotToken(localCount));
+		}
 
 	}
 
@@ -91,7 +94,10 @@ public class ClientCommunicator {
 				}
 				else if (payload instanceof Token) {
 					tankModel.receiveToken();
+				} else if (payload instanceof SnapshotMarker) {
+					tankModel.receiveSnapshotMarker(msg.getSender());
 				}
+
 
 			}
 			System.out.println("Receiver stopped.");

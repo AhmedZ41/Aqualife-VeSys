@@ -61,10 +61,57 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		}
 	}
 
-	synchronized void receiveFish(FishModel fish) {
+	public synchronized void receiveFish(FishModel fish) {
+		// Handle snapshot logic
+		String senderTankId = fish.getTankId(); // ID of the sender client (e.g. "tank2")
+
+		if (recordingState != RecordingState.IDLE) {
+			if (leftNeighbor != null && senderTankId.equals(getIdByAddress(leftNeighbor))) {
+				// Fish came from left neighbor
+				if (recordingState == RecordingState.BOTH) {
+					recordingState = RecordingState.RIGHT; // done with left
+					snapshotLocalCount++; // count this in-transit fish
+					System.out.println("Snapshot: Counted fish from LEFT");
+				} else if (recordingState == RecordingState.LEFT) {
+					recordingState = RecordingState.IDLE;
+					snapshotLocalCount++;
+					System.out.println("Snapshot: Counted last fish from LEFT — done");
+					maybeSendSnapshotToken(); // check if we’re done
+				}
+			} else if (rightNeighbor != null && senderTankId.equals(getIdByAddress(rightNeighbor))) {
+				// Fish came from right neighbor
+				if (recordingState == RecordingState.BOTH) {
+					recordingState = RecordingState.LEFT; // done with right
+					snapshotLocalCount++;
+					System.out.println("Snapshot: Counted fish from RIGHT");
+				} else if (recordingState == RecordingState.RIGHT) {
+					recordingState = RecordingState.IDLE;
+					snapshotLocalCount++;
+					System.out.println("Snapshot: Counted last fish from RIGHT — done");
+					maybeSendSnapshotToken(); // check if we’re done
+				}
+			}
+		}
+
+		// Normal receive behavior: reset fish position and add to tank
 		fish.setToStart();
 		fishies.add(fish);
 	}
+
+	private void maybeSendSnapshotToken() {
+		if (recordingState == RecordingState.IDLE && snapshotInitiator) {
+			forwarder.sendSnapshotToken(leftNeighbor, snapshotLocalCount);
+			System.out.println("Initiator: Sending SnapshotToken with count = " + snapshotLocalCount);
+			snapshotInitiator = false; // reset
+		}
+	}
+
+	private String getIdByAddress(InetSocketAddress address) {
+		return address.toString(); // or a cleaner mapping if needed
+	}
+
+
+
 
 	public String getId() {
 		return id;
@@ -190,6 +237,51 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			System.out.println("Sent SnapshotMarker to RIGHT neighbor: " + rightNeighbor);
 		}
 	}
+
+	public synchronized void receiveSnapshotMarker(InetSocketAddress sender) {
+		String senderId = getIdByAddress(sender);
+
+		if (recordingState == RecordingState.IDLE) {
+			// First marker received → start snapshot
+			System.out.println("First SnapshotMarker received from: " + senderId);
+
+			snapshotLocalCount = fishies.size();  // Save local state
+			recordingState = isLeftNeighbor(sender) ? RecordingState.RIGHT : RecordingState.LEFT;
+
+			// Forward SnapshotMarker to both neighbors
+			if (leftNeighbor != null) forwarder.sendSnapshotMarker(leftNeighbor);
+			if (rightNeighbor != null) forwarder.sendSnapshotMarker(rightNeighbor);
+
+		} else if (recordingState == RecordingState.LEFT && isRightNeighbor(sender)) {
+			recordingState = RecordingState.IDLE;
+			System.out.println("Second marker from RIGHT — done recording");
+			maybeSendSnapshotToken();
+
+		} else if (recordingState == RecordingState.RIGHT && isLeftNeighbor(sender)) {
+			recordingState = RecordingState.IDLE;
+			System.out.println("Second marker from LEFT — done recording");
+			maybeSendSnapshotToken();
+
+		} else if (recordingState == RecordingState.BOTH) {
+			// First channel already marked, still one open
+			if (isLeftNeighbor(sender)) {
+				recordingState = RecordingState.RIGHT;
+				System.out.println("Snapshot: Left channel marked");
+			} else if (isRightNeighbor(sender)) {
+				recordingState = RecordingState.LEFT;
+				System.out.println("Snapshot: Right channel marked");
+			}
+		}
+	}
+
+	private boolean isLeftNeighbor(InetSocketAddress addr) {
+		return leftNeighbor != null && getIdByAddress(leftNeighbor).equals(getIdByAddress(addr));
+	}
+
+	private boolean isRightNeighbor(InetSocketAddress addr) {
+		return rightNeighbor != null && getIdByAddress(rightNeighbor).equals(getIdByAddress(addr));
+	}
+
 
 
 
