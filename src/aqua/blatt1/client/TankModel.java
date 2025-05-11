@@ -36,6 +36,9 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	private boolean snapshotInitiator = false;  // True if we initiated the global snapshot
 	// Tracks where each known fish is located: HERE, LEFT, or RIGHT
 	private final Map<String, FishLocation> fishLocations = new ConcurrentHashMap<>();
+	// Maps fishId to the current location (used only by the home tank)
+	private final Map<String, InetSocketAddress> homeAgent = new ConcurrentHashMap<>();
+
 
 
 
@@ -62,6 +65,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 			fishies.add(fish);
 			fishLocations.put(fish.getId(), FishLocation.HERE); // Mark as locally present
+			// Register this fish in our home agent map
+			homeAgent.put(fish.getId(), getOwnAddress()); // Current address is our own
 
 		}
 	}
