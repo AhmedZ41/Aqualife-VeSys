@@ -419,6 +419,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public synchronized Map<String, InetSocketAddress> getKnownClients() {
 		return knownClients;
 	}
+	public synchronized void updateHomeAgent(String fishId, InetSocketAddress newLocation) {
+		if (isHomeOf(fishId)) {
+			homeAgent.put(fishId, newLocation);
+			System.out.println("Updated homeAgent for " + fishId + " → " + newLocation);
+		} else {
+			System.out.println("Received LocationUpdate, but not home of " + fishId);
+		}
+	}
 
 
 

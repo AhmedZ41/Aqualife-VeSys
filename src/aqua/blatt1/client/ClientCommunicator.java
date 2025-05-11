@@ -123,6 +123,11 @@ public class ClientCommunicator {
 					LocationRequest req = (LocationRequest) payload;
 					tankModel.handleLocationRequest(req.getFishId(), req.getOrigin(), msg.getSender());
 				}
+				else if (payload instanceof LocationUpdate) {
+					LocationUpdate update = (LocationUpdate) payload;
+					tankModel.updateHomeAgent(update.getFishId(), update.getNewLocation());
+				}
+
 
 
 
