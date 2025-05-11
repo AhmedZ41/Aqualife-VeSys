@@ -367,34 +367,29 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	}
 
 	public synchronized void locateFishGlobally(String fishId) {
-		FishLocation location = fishLocations.get(fishId);
-
-		if (location == null) {
-			System.out.println("Fish ID not known: " + fishId);
-			return;
-		}
-
-		switch (location) {
-			case HERE -> {
-				// Toggle directly
-				for (FishModel fish : fishies) {
-					if (fish.getId().equals(fishId)) {
-						fish.toggle();
-						System.out.println("Toggled fish locally: " + fishId);
-						break;
-					}
-				}
+		if (isHomeOf(fishId)) {
+			// I am the home → look up the last known location and forward there
+			InetSocketAddress location = homeAgent.get(fishId);
+			if (location != null) {
+				forwarder.sendLocationRequest(location, fishId, getOwnAddress());
+				System.out.println("Home tank: sent LocationRequest to " + location + " for " + fishId);
+			} else {
+				System.out.println("Home tank: no known location for " + fishId);
 			}
-			case LEFT -> {
-				System.out.println("Sending LocationRequest LEFT for: " + fishId);
-				forwarder.sendLocationRequest(leftNeighbor, fishId, getOwnAddress());
-			}
-			case RIGHT -> {
-				System.out.println("Sending LocationRequest RIGHT for: " + fishId);
-				forwarder.sendLocationRequest(leftNeighbor, fishId, getOwnAddress());
+		} else {
+			// I am not the home → resolve the home tank and send request there
+			String homeTankId = fishId.substring(fishId.indexOf('@') + 1);
+			InetSocketAddress homeAddress = forwarder.resolveTankAddress(homeTankId);
+
+			if (homeAddress != null) {
+				forwarder.sendLocationRequest(homeAddress, fishId, getOwnAddress());
+				System.out.println("Non-home tank: forwarded LocationRequest to home " + homeTankId);
+			} else {
+				System.out.println("Non-home tank: could not resolve address of " + homeTankId);
 			}
 		}
 	}
+
 
 	private InetSocketAddress ownAddress;
 
