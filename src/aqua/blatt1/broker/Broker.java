@@ -111,7 +111,7 @@ public class Broker {
         endpoint.send(rightNeighbor, new NeighborUpdate(clientAddress, true)); // true = left
 
         // Send RegisterResponse to the newly registered client
-        endpoint.send(clientAddress, new RegisterResponse(clientId));
+        endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress));
 
         System.out.println("Registered: " + clientId + " at " + clientAddress);
 

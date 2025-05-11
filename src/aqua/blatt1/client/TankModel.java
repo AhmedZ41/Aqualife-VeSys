@@ -182,6 +182,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		updateFishies();
 		setChanged();
 		notifyObservers();
+
 	}
 
 	protected void run() {
@@ -346,7 +347,45 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		}
 	}
 
+	public synchronized void locateFishGlobally(String fishId) {
+		FishLocation location = fishLocations.get(fishId);
 
+		if (location == null) {
+			System.out.println("Fish ID not known: " + fishId);
+			return;
+		}
+
+		switch (location) {
+			case HERE -> {
+				// Toggle directly
+				for (FishModel fish : fishies) {
+					if (fish.getId().equals(fishId)) {
+						fish.toggle();
+						System.out.println("Toggled fish locally: " + fishId);
+						break;
+					}
+				}
+			}
+			case LEFT -> {
+				System.out.println("Sending LocationRequest LEFT for: " + fishId);
+				forwarder.sendLocationRequest(leftNeighbor, fishId, getOwnAddress());
+			}
+			case RIGHT -> {
+				System.out.println("Sending LocationRequest RIGHT for: " + fishId);
+				forwarder.sendLocationRequest(leftNeighbor, fishId, getOwnAddress());
+			}
+		}
+	}
+
+	private InetSocketAddress ownAddress;
+
+	public synchronized void setOwnAddress(InetSocketAddress address) {
+		this.ownAddress = address;
+	}
+
+	public synchronized InetSocketAddress getOwnAddress() {
+		return ownAddress;
+	}
 
 
 

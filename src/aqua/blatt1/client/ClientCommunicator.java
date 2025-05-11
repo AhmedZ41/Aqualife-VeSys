@@ -19,6 +19,7 @@ public class ClientCommunicator {
 	public class ClientForwarder {
 		private final InetSocketAddress broker;
 
+
 		private final TankModel tankModel;
 
 		private ClientForwarder(TankModel tankModel) {
@@ -83,8 +84,13 @@ public class ClientCommunicator {
 				Object payload = msg.getPayload();
 
 				if (payload instanceof RegisterResponse) {
-					tankModel.onRegistration(((RegisterResponse) payload).getId());
-				} else if (payload instanceof HandoffRequest) {
+					RegisterResponse response = (RegisterResponse) payload;
+					tankModel.onRegistration(response.getId());
+
+					// Store own address:
+					tankModel.setOwnAddress(response.getClientAddress());
+				}
+				else if (payload instanceof HandoffRequest) {
 					tankModel.receiveFish(((HandoffRequest) payload).getFish());
 				} else if (payload instanceof NeighborUpdate) {
 					NeighborUpdate neighborUpdate = (NeighborUpdate) payload;
