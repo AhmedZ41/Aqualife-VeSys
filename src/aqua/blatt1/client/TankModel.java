@@ -1,15 +1,12 @@
 package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Observable;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import aqua.blatt1.common.Direction;
+import aqua.blatt1.common.FishLocation;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.SnapshotToken;
 
@@ -37,6 +34,9 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	private RecordingState recordingState = RecordingState.IDLE; // Which channels are being recorded
 	private int snapshotLocalCount = 0;         // How many fish we had when snapshot started
 	private boolean snapshotInitiator = false;  // True if we initiated the global snapshot
+	// Tracks where each known fish is located: HERE, LEFT, or RIGHT
+	private final Map<String, FishLocation> fishLocations = new ConcurrentHashMap<>();
+
 
 
 
@@ -61,6 +61,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					rand.nextBoolean() ? Direction.LEFT : Direction.RIGHT);
 
 			fishies.add(fish);
+			fishLocations.put(fish.getId(), FishLocation.HERE); // Mark as locally present
+
 		}
 	}
 
@@ -99,6 +101,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		// Normal receive behavior: reset fish position and add to tank
 		fish.setToStart();
 		fishies.add(fish);
+		fishLocations.put(fish.getId(), FishLocation.HERE); // Mark fish as HERE
 	}
 
 	private void maybeSendSnapshotToken() {
