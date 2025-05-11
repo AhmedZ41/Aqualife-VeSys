@@ -38,6 +38,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	private final Map<String, FishLocation> fishLocations = new ConcurrentHashMap<>();
 	// Maps fishId to the current location (used only by the home tank)
 	private final Map<String, InetSocketAddress> homeAgent = new ConcurrentHashMap<>();
+	private Map<String, InetSocketAddress> knownClients = new ConcurrentHashMap<>();
+
 
 
 
@@ -107,6 +109,18 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		fish.setToStart();
 		fishies.add(fish);
 		fishLocations.put(fish.getId(), FishLocation.HERE); // Mark fish as HERE
+		// If we're not the home of this fish, send update to its home tank
+		if (!isHomeOf(fish.getId())) {
+			String homeTankId = fish.getTankId(); // e.g., "tank3"
+			InetSocketAddress homeAddress = forwarder.resolveTankAddress(homeTankId); // 🔜 Subtask 4
+			if (homeAddress != null) {
+				forwarder.sendLocationUpdate(homeAddress, fish.getId(), getOwnAddress());
+				System.out.println("Sent LocationUpdate to home of " + fish.getId() + ": " + homeAddress);
+			} else {
+				System.out.println("Home address of " + homeTankId + " not found.");
+			}
+		}
+
 	}
 
 	private void maybeSendSnapshotToken() {
@@ -397,6 +411,15 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		String homeId = fishId.substring(fishId.indexOf('@') + 1);
 		return homeId.equals(this.id);
 	}
+
+	public synchronized void setKnownClients(Map<String, InetSocketAddress> map) {
+		this.knownClients = map;
+	}
+
+	public synchronized Map<String, InetSocketAddress> getKnownClients() {
+		return knownClients;
+	}
+
 
 
 

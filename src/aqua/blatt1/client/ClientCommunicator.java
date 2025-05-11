@@ -67,6 +67,14 @@ public class ClientCommunicator {
 			endpoint.send(neighbor, new LocationRequest(fishId, origin));
 		}
 
+		public void sendLocationUpdate(InetSocketAddress home, String fishId, InetSocketAddress newLocation) {
+			endpoint.send(home, new LocationUpdate(fishId, newLocation));
+		}
+
+		public InetSocketAddress resolveTankAddress(String tankId) {
+			return tankModel.getKnownClients().get(tankId);
+		}
+
 
 	}
 
@@ -89,6 +97,8 @@ public class ClientCommunicator {
 
 					// Store own address:
 					tankModel.setOwnAddress(response.getClientAddress());
+					tankModel.setKnownClients(response.getKnownClients());
+
 				}
 				else if (payload instanceof HandoffRequest) {
 					tankModel.receiveFish(((HandoffRequest) payload).getFish());

@@ -1,7 +1,10 @@
 package aqua.blatt1.broker;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /*
  * This class is not thread-safe and hence must be used in a thread-safe way, e.g. thread confined or 
@@ -64,5 +67,13 @@ public class ClientCollection<T> {
 	public T getRightNeighorOf(int index) {
 		return index < clients.size() - 1 ? clients.get(index + 1).client : clients.get(0).client;
 	}
+	public Map<String, InetSocketAddress> toMap() {
+		Map<String, InetSocketAddress> result = new HashMap<>();
+		for (Client client : clients) {
+			result.put(client.id, (InetSocketAddress) client.client);
+		}
+		return result;
+	}
+
 
 }
