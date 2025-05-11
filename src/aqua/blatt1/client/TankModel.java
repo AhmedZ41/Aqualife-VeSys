@@ -314,6 +314,37 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		return rightNeighbor != null && getIdByAddress(rightNeighbor).equals(getIdByAddress(addr));
 	}
 
+	public synchronized void handleLocationRequest(String fishId, InetSocketAddress origin, InetSocketAddress sender) {
+		FishLocation location = fishLocations.get(fishId);
+
+		if (location == null) {
+			System.out.println("Unknown fish: " + fishId + ". Cannot forward request.");
+			return;
+		}
+
+		switch (location) {
+			case HERE -> {
+				// Fish is local → toggle its color
+				for (FishModel fish : fishies) {
+					if (fish.getId().equals(fishId)) {
+						fish.toggle();
+						System.out.println("Toggled fish color: " + fishId + " (locally)");
+						break;
+					}
+				}
+			}
+			case LEFT -> {
+				// Forward request to left neighbor
+				System.out.println("Forwarding toggle request LEFT for: " + fishId);
+				forwarder.sendLocationRequest(leftNeighbor, fishId, origin);
+			}
+			case RIGHT -> {
+				// Forward request to right neighbor
+				System.out.println("Forwarding toggle request RIGHT for: " + fishId);
+				forwarder.sendLocationRequest(rightNeighbor, fishId, origin);
+			}
+		}
+	}
 
 
 

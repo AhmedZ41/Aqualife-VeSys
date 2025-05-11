@@ -62,6 +62,10 @@ public class ClientCommunicator {
 		public void sendSnapshotToken(InetSocketAddress neighbor, int localCount) {
 			endpoint.send(neighbor, new SnapshotToken(localCount));
 		}
+		public void sendLocationRequest(InetSocketAddress neighbor, String fishId, InetSocketAddress origin) {
+			endpoint.send(neighbor, new LocationRequest(fishId, origin));
+		}
+
 
 	}
 
@@ -99,6 +103,11 @@ public class ClientCommunicator {
 				}else if (payload instanceof SnapshotToken) {
 					tankModel.receiveSnapshotToken((SnapshotToken) payload);
 				}
+				else if (payload instanceof LocationRequest) {
+					LocationRequest req = (LocationRequest) payload;
+					tankModel.handleLocationRequest(req.getFishId(), req.getOrigin(), msg.getSender());
+				}
+
 
 
 
