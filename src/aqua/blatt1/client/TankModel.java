@@ -157,6 +157,12 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 				// If we have the token, send the fish to the neighbor
 				if (hasToken()) {
 					forwarder.handOff(fish);
+					if (fish.getDirection() == Direction.LEFT) {
+						fishLocations.put(fish.getId(), FishLocation.LEFT); // Mark as sent left
+					} else {
+						fishLocations.put(fish.getId(), FishLocation.RIGHT); // Mark as sent right
+					}
+
 				} else {
 					fish.reverse(); // Reverse direction if no token
 				}
