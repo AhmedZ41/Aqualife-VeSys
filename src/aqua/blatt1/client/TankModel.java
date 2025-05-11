@@ -159,8 +159,12 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					forwarder.handOff(fish);
 					if (fish.getDirection() == Direction.LEFT) {
 						fishLocations.put(fish.getId(), FishLocation.LEFT); // Mark as sent left
+						System.out.println("Updated fish location: " + fish.getId() + " → " + fishLocations.get(fish.getId()));
+
 					} else {
 						fishLocations.put(fish.getId(), FishLocation.RIGHT); // Mark as sent right
+						System.out.println("Updated fish location: " + fish.getId() + " → " + fishLocations.get(fish.getId()));
+
 					}
 
 				} else {
