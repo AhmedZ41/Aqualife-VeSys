@@ -392,6 +392,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		return ownAddress;
 	}
 
+	public synchronized boolean isHomeOf(String fishId) {
+		// The home tank is embedded after '@' in the fish ID
+		String homeId = fishId.substring(fishId.indexOf('@') + 1);
+		return homeId.equals(this.id);
+	}
 
 
 
