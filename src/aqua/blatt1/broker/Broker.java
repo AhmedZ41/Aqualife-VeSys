@@ -111,7 +111,9 @@ public class Broker {
         endpoint.send(rightNeighbor, new NeighborUpdate(clientAddress, true)); // true = left
 
         // Send RegisterResponse to the newly registered client
-        endpoint.send(clientAddress, new RegisterResponse(clientId));
+        Map<String, InetSocketAddress> snapshot = clients.toMap(); // ❗ implement this if needed
+        endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress, snapshot));
+
 
         System.out.println("Registered: " + clientId + " at " + clientAddress);
 

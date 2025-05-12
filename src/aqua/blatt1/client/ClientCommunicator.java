@@ -19,6 +19,7 @@ public class ClientCommunicator {
 	public class ClientForwarder {
 		private final InetSocketAddress broker;
 
+
 		private final TankModel tankModel;
 
 		private ClientForwarder(TankModel tankModel) {
@@ -62,6 +63,18 @@ public class ClientCommunicator {
 		public void sendSnapshotToken(InetSocketAddress neighbor, int localCount) {
 			endpoint.send(neighbor, new SnapshotToken(localCount));
 		}
+		public void sendLocationRequest(InetSocketAddress neighbor, String fishId, InetSocketAddress origin) {
+			endpoint.send(neighbor, new LocationRequest(fishId, origin));
+		}
+
+		public void sendLocationUpdate(InetSocketAddress home, String fishId, InetSocketAddress newLocation) {
+			endpoint.send(home, new LocationUpdate(fishId, newLocation));
+		}
+
+		public InetSocketAddress resolveTankAddress(String tankId) {
+			return tankModel.getKnownClients().get(tankId);
+		}
+
 
 	}
 
@@ -79,8 +92,15 @@ public class ClientCommunicator {
 				Object payload = msg.getPayload();
 
 				if (payload instanceof RegisterResponse) {
-					tankModel.onRegistration(((RegisterResponse) payload).getId());
-				} else if (payload instanceof HandoffRequest) {
+					RegisterResponse response = (RegisterResponse) payload;
+					tankModel.onRegistration(response.getId());
+
+					// Store own address:
+					tankModel.setOwnAddress(response.getClientAddress());
+					tankModel.setKnownClients(response.getKnownClients());
+
+				}
+				else if (payload instanceof HandoffRequest) {
 					tankModel.receiveFish(((HandoffRequest) payload).getFish());
 				} else if (payload instanceof NeighborUpdate) {
 					NeighborUpdate neighborUpdate = (NeighborUpdate) payload;
@@ -99,6 +119,16 @@ public class ClientCommunicator {
 				}else if (payload instanceof SnapshotToken) {
 					tankModel.receiveSnapshotToken((SnapshotToken) payload);
 				}
+				else if (payload instanceof LocationRequest) {
+					LocationRequest req = (LocationRequest) payload;
+					tankModel.handleLocationRequest(req.getFishId(), req.getOrigin(), msg.getSender());
+				}
+				else if (payload instanceof LocationUpdate) {
+					LocationUpdate update = (LocationUpdate) payload;
+					tankModel.updateHomeAgent(update.getFishId(), update.getNewLocation());
+				}
+
+
 
 
 

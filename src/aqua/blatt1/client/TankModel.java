@@ -1,15 +1,12 @@
 package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Observable;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import aqua.blatt1.common.Direction;
+import aqua.blatt1.common.FishLocation;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.SnapshotToken;
 
@@ -37,6 +34,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	private RecordingState recordingState = RecordingState.IDLE; // Which channels are being recorded
 	private int snapshotLocalCount = 0;         // How many fish we had when snapshot started
 	private boolean snapshotInitiator = false;  // True if we initiated the global snapshot
+	// Tracks where each known fish is located: HERE, LEFT, or RIGHT
+	private final Map<String, FishLocation> fishLocations = new ConcurrentHashMap<>();
+	// Maps fishId to the current location (used only by the home tank)
+	private final Map<String, InetSocketAddress> homeAgent = new ConcurrentHashMap<>();
+	private Map<String, InetSocketAddress> knownClients = new ConcurrentHashMap<>();
+
+
+
 
 
 
@@ -61,6 +66,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					rand.nextBoolean() ? Direction.LEFT : Direction.RIGHT);
 
 			fishies.add(fish);
+			fishLocations.put(fish.getId(), FishLocation.HERE); // Mark as locally present
+			// Register this fish in our home agent map
+			homeAgent.put(fish.getId(), getOwnAddress()); // Current address is our own
+
 		}
 	}
 
@@ -99,6 +108,19 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		// Normal receive behavior: reset fish position and add to tank
 		fish.setToStart();
 		fishies.add(fish);
+		fishLocations.put(fish.getId(), FishLocation.HERE); // Mark fish as HERE
+		// If we're not the home of this fish, send update to its home tank
+		if (!isHomeOf(fish.getId())) {
+			String homeTankId = fish.getTankId(); // e.g., "tank3"
+			InetSocketAddress homeAddress = forwarder.resolveTankAddress(homeTankId); // 🔜 Subtask 4
+			if (homeAddress != null) {
+				forwarder.sendLocationUpdate(homeAddress, fish.getId(), getOwnAddress());
+				System.out.println("Sent LocationUpdate to home of " + fish.getId() + ": " + homeAddress);
+			} else {
+				System.out.println("Home address of " + homeTankId + " not found.");
+			}
+		}
+
 	}
 
 	private void maybeSendSnapshotToken() {
@@ -154,6 +176,16 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 				// If we have the token, send the fish to the neighbor
 				if (hasToken()) {
 					forwarder.handOff(fish);
+					if (fish.getDirection() == Direction.LEFT) {
+						fishLocations.put(fish.getId(), FishLocation.LEFT); // Mark as sent left
+						System.out.println("Updated fish location: " + fish.getId() + " → " + fishLocations.get(fish.getId()));
+
+					} else {
+						fishLocations.put(fish.getId(), FishLocation.RIGHT); // Mark as sent right
+						System.out.println("Updated fish location: " + fish.getId() + " → " + fishLocations.get(fish.getId()));
+
+					}
+
 				} else {
 					fish.reverse(); // Reverse direction if no token
 				}
@@ -169,6 +201,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		updateFishies();
 		setChanged();
 		notifyObservers();
+
 	}
 
 	protected void run() {
@@ -301,8 +334,94 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		return rightNeighbor != null && getIdByAddress(rightNeighbor).equals(getIdByAddress(addr));
 	}
 
+	public synchronized void handleLocationRequest(String fishId, InetSocketAddress origin, InetSocketAddress sender) {
+		FishLocation location = fishLocations.get(fishId);
+
+		if (location == null) {
+			System.out.println("Unknown fish: " + fishId + ". Cannot forward request.");
+			return;
+		}
+
+		switch (location) {
+			case HERE -> {
+				// Fish is local → toggle its color
+				for (FishModel fish : fishies) {
+					if (fish.getId().equals(fishId)) {
+						fish.toggle();
+						System.out.println("Toggled fish color: " + fishId + " (locally)");
+						break;
+					}
+				}
+			}
+			case LEFT -> {
+				// Forward request to left neighbor
+				System.out.println("Forwarding toggle request LEFT for: " + fishId);
+				forwarder.sendLocationRequest(leftNeighbor, fishId, origin);
+			}
+			case RIGHT -> {
+				// Forward request to right neighbor
+				System.out.println("Forwarding toggle request RIGHT for: " + fishId);
+				forwarder.sendLocationRequest(rightNeighbor, fishId, origin);
+			}
+		}
+	}
+
+	public synchronized void locateFishGlobally(String fishId) {
+		if (isHomeOf(fishId)) {
+			// I am the home → look up the last known location and forward there
+			InetSocketAddress location = homeAgent.get(fishId);
+			if (location != null) {
+				forwarder.sendLocationRequest(location, fishId, getOwnAddress());
+				System.out.println("Home tank: sent LocationRequest to " + location + " for " + fishId);
+			} else {
+				System.out.println("Home tank: no known location for " + fishId);
+			}
+		} else {
+			// I am not the home → resolve the home tank and send request there
+			String homeTankId = fishId.substring(fishId.indexOf('@') + 1);
+			InetSocketAddress homeAddress = forwarder.resolveTankAddress(homeTankId);
+
+			if (homeAddress != null) {
+				forwarder.sendLocationRequest(homeAddress, fishId, getOwnAddress());
+				System.out.println("Non-home tank: forwarded LocationRequest to home " + homeTankId);
+			} else {
+				System.out.println("Non-home tank: could not resolve address of " + homeTankId);
+			}
+		}
+	}
 
 
+	private InetSocketAddress ownAddress;
+
+	public synchronized void setOwnAddress(InetSocketAddress address) {
+		this.ownAddress = address;
+	}
+
+	public synchronized InetSocketAddress getOwnAddress() {
+		return ownAddress;
+	}
+
+	public synchronized boolean isHomeOf(String fishId) {
+		// The home tank is embedded after '@' in the fish ID
+		String homeId = fishId.substring(fishId.indexOf('@') + 1);
+		return homeId.equals(this.id);
+	}
+
+	public synchronized void setKnownClients(Map<String, InetSocketAddress> map) {
+		this.knownClients = map;
+	}
+
+	public synchronized Map<String, InetSocketAddress> getKnownClients() {
+		return knownClients;
+	}
+	public synchronized void updateHomeAgent(String fishId, InetSocketAddress newLocation) {
+		if (isHomeOf(fishId)) {
+			homeAgent.put(fishId, newLocation);
+			System.out.println("Updated homeAgent for " + fishId + " → " + newLocation);
+		} else {
+			System.out.println("Received LocationUpdate, but not home of " + fishId);
+		}
+	}
 
 
 
