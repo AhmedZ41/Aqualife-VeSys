@@ -101,14 +101,15 @@ public class ClientCommunicator {
 					tankModel.setOwnAddress(response.getClientAddress());
 					tankModel.setKnownClients(response.getKnownClients());
 
-					// Schedule re-registration based on lease time
-					Timer timer = new Timer();
-					timer.schedule(new TimerTask() {
+					// Schedule periodic re-registration
+					Timer timer = new Timer(true); // Create as daemon timer
+					long reregisterInterval = 1800; // Re-register 200ms before lease expires
+					timer.scheduleAtFixedRate(new TimerTask() {
 						@Override
 						public void run() {
 							tankModel.getClientForwarder().register();
 						}
-					}, response.getLeaseTimeMillis());
+					}, reregisterInterval, reregisterInterval); // Initial delay and period both set to 1800ms
 				}
 				else if (payload instanceof HandoffRequest) {
 					tankModel.receiveFish(((HandoffRequest) payload).getFish());
