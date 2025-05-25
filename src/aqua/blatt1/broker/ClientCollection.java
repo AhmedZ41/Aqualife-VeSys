@@ -14,11 +14,11 @@ import java.util.Map;
 public class ClientCollection<T> {
 	private class Client {
 		final String id;
-		final T client;
+		final ClientInfo clientInfo;
 
 		Client(String id, T client) {
 			this.id = id;
-			this.client = client;
+			this.clientInfo = new ClientInfo(id, (InetSocketAddress) client);
 		}
 	}
 
@@ -29,6 +29,14 @@ public class ClientCollection<T> {
 	}
 
 	public ClientCollection<T> add(String id, T client) {
+		// Check if client already exists
+		int existingIndex = indexOf((InetSocketAddress) client);
+		if (existingIndex != -1) {
+			// Update timestamp of existing client
+			clients.get(existingIndex).clientInfo.updateTimestamp();
+			return this;
+		}
+		// Add new client
 		clients.add(new Client(id, client));
 		return this;
 	}
@@ -46,14 +54,15 @@ public class ClientCollection<T> {
 	}
 
 	public int indexOf(T client) {
+		InetSocketAddress address = (InetSocketAddress) client;
 		for (int i = 0; i < clients.size(); i++)
-			if (clients.get(i).client.equals(client))
+			if (clients.get(i).clientInfo.getAddress().equals(address))
 				return i;
 		return -1;
 	}
 
 	public T getClient(int index) {
-		return clients.get(index).client;
+		return (T) clients.get(index).clientInfo.getAddress();
 	}
 
 	public int size() {
@@ -61,19 +70,22 @@ public class ClientCollection<T> {
 	}
 
 	public T getLeftNeighorOf(int index) {
-		return index == 0 ? clients.get(clients.size() - 1).client : clients.get(index - 1).client;
+		return index == 0 ? 
+			(T) clients.get(clients.size() - 1).clientInfo.getAddress() : 
+			(T) clients.get(index - 1).clientInfo.getAddress();
 	}
 
 	public T getRightNeighorOf(int index) {
-		return index < clients.size() - 1 ? clients.get(index + 1).client : clients.get(0).client;
+		return index < clients.size() - 1 ? 
+			(T) clients.get(index + 1).clientInfo.getAddress() : 
+			(T) clients.get(0).clientInfo.getAddress();
 	}
+
 	public Map<String, InetSocketAddress> toMap() {
 		Map<String, InetSocketAddress> result = new HashMap<>();
 		for (Client client : clients) {
-			result.put(client.id, (InetSocketAddress) client.client);
+			result.put(client.id, client.clientInfo.getAddress());
 		}
 		return result;
 	}
-
-
 }
