@@ -100,7 +100,6 @@ public class ClientCollection<T> {
 			long timeSinceLastUpdate = ChronoUnit.MILLIS.between(client.clientInfo.getLastUpdated(), now);
 			if (timeSinceLastUpdate > leaseTimeMillis) {
 				expiredClients.add(client);
-				System.out.println("Client " + client.id + " expired after " + timeSinceLastUpdate + "ms");
 			}
 		}
 
@@ -109,7 +108,7 @@ public class ClientCollection<T> {
 			int index = indexOf(expired.id);
 			if (index != -1) {
 				remove(index);
-				System.out.println("Removed expired client: " + expired.id);
+				System.out.println("Client " + expired.id + " expired and was removed");
 			}
 		}
 	}
