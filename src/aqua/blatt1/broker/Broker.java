@@ -7,15 +7,13 @@ import messaging.Endpoint;
 import messaging.Message;
 import aqua.blatt1.common.msgtypes.*;
 
-
 import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 
 public class Broker {
     private static final int PORT = 4711;
@@ -25,8 +23,6 @@ public class Broker {
     private final ExecutorService executor = Executors.newFixedThreadPool(4);
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private volatile boolean stopRequested = false; //volatile = it's visible to all threads
-
-
 
     public Broker() {
         this.endpoint = new Endpoint(PORT); // Bind to port 4711
@@ -112,8 +108,7 @@ public class Broker {
 
         // Send RegisterResponse to the newly registered client
         Map<String, InetSocketAddress> snapshot = clients.toMap(); // ❗ implement this if needed
-        endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress, snapshot));
-
+        endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress, snapshot, 2000));
 
         System.out.println("Registered: " + clientId + " at " + clientAddress);
 

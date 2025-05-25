@@ -88,7 +88,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					recordingState = RecordingState.IDLE;
 					snapshotLocalCount++;
 					System.out.println("Snapshot: Counted last fish from LEFT — done");
-					maybeSendSnapshotToken(); // check if we’re done
+					maybeSendSnapshotToken(); // check if we're done
 				}
 			} else if (rightNeighbor != null && senderTankId.equals(getIdByAddress(rightNeighbor))) {
 				// Fish came from right neighbor
@@ -100,7 +100,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					recordingState = RecordingState.IDLE;
 					snapshotLocalCount++;
 					System.out.println("Snapshot: Counted last fish from RIGHT — done");
-					maybeSendSnapshotToken(); // check if we’re done
+					maybeSendSnapshotToken(); // check if we're done
 				}
 			}
 		}
@@ -414,6 +414,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public synchronized Map<String, InetSocketAddress> getKnownClients() {
 		return knownClients;
 	}
+
+	public ClientCommunicator.ClientForwarder getClientForwarder() {
+		return forwarder;
+	}
+
 	public synchronized void updateHomeAgent(String fishId, InetSocketAddress newLocation) {
 		if (isHomeOf(fishId)) {
 			homeAgent.put(fishId, newLocation);

@@ -1,6 +1,8 @@
 package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.msgtypes.*;
@@ -99,6 +101,14 @@ public class ClientCommunicator {
 					tankModel.setOwnAddress(response.getClientAddress());
 					tankModel.setKnownClients(response.getKnownClients());
 
+					// Schedule re-registration based on lease time
+					Timer timer = new Timer();
+					timer.schedule(new TimerTask() {
+						@Override
+						public void run() {
+							tankModel.getClientForwarder().register();
+						}
+					}, response.getLeaseTimeMillis());
 				}
 				else if (payload instanceof HandoffRequest) {
 					tankModel.receiveFish(((HandoffRequest) payload).getFish());
