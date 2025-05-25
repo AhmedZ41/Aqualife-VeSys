@@ -1,6 +1,8 @@
 package aqua.blatt1.broker;
 
 import java.net.InetSocketAddress;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -87,5 +89,28 @@ public class ClientCollection<T> {
 			result.put(client.id, client.clientInfo.getAddress());
 		}
 		return result;
+	}
+
+	public void removeExpiredClients(long leaseTimeMillis) {
+		Instant now = Instant.now();
+		List<Client> expiredClients = new ArrayList<>();
+
+		// Collect expired clients
+		for (Client client : clients) {
+			long timeSinceLastUpdate = ChronoUnit.MILLIS.between(client.clientInfo.getLastUpdated(), now);
+			if (timeSinceLastUpdate > leaseTimeMillis) {
+				expiredClients.add(client);
+				System.out.println("Client " + client.id + " expired after " + timeSinceLastUpdate + "ms");
+			}
+		}
+
+		// Remove expired clients
+		for (Client expired : expiredClients) {
+			int index = indexOf(expired.id);
+			if (index != -1) {
+				remove(index);
+				System.out.println("Removed expired client: " + expired.id);
+			}
+		}
 	}
 }

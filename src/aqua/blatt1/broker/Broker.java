@@ -9,6 +9,8 @@ import aqua.blatt1.common.msgtypes.*;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,21 +19,40 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Broker {
     private static final int PORT = 4711;
+    private static final long LEASE_TIME_MILLIS = 2000; // Lease time constant
+    private static final long CLEANUP_INTERVAL = 1000; // Check every second
+    
     private final Endpoint endpoint;
     private final ClientCollection<InetSocketAddress> clients;
     private final AtomicInteger idCounter;
     private final ExecutorService executor = Executors.newFixedThreadPool(4);
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private volatile boolean stopRequested = false; //volatile = it's visible to all threads
+    private final Timer cleanupTimer;
 
     public Broker() {
         this.endpoint = new Endpoint(PORT); // Bind to port 4711
         this.clients = new ClientCollection<>();
         this.idCounter = new AtomicInteger(1);
+        this.cleanupTimer = new Timer(true); // Create as daemon timer
+
+        // Start the cleanup timer task
+        cleanupTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                lock.writeLock().lock();
+                try {
+                    clients.removeExpiredClients(LEASE_TIME_MILLIS);
+                } finally {
+                    lock.writeLock().unlock();
+                }
+            }
+        }, CLEANUP_INTERVAL, CLEANUP_INTERVAL);
 
         new Thread(() -> {
             javax.swing.JOptionPane.showMessageDialog(null, "Press OK button to stop server");
             stopRequested = true;
+            cleanupTimer.cancel(); // Stop the cleanup timer when broker stops
         }).start();
     }
 
@@ -108,7 +129,7 @@ public class Broker {
 
         // Send RegisterResponse to the newly registered client
         Map<String, InetSocketAddress> snapshot = clients.toMap(); // ❗ implement this if needed
-        endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress, snapshot, 2000));
+        endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress, snapshot, LEASE_TIME_MILLIS));
 
         System.out.println("Registered: " + clientId + " at " + clientAddress);
 
