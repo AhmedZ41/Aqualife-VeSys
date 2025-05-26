@@ -7,35 +7,52 @@ import messaging.Endpoint;
 import messaging.Message;
 import aqua.blatt1.common.msgtypes.*;
 
-
 import java.net.InetSocketAddress;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-
 public class Broker {
     private static final int PORT = 4711;
+    private static final long LEASE_TIME_MILLIS = 2000; // Lease time constant
+    private static final long CLEANUP_INTERVAL = 1000; // Check every second
+    
     private final Endpoint endpoint;
     private final ClientCollection<InetSocketAddress> clients;
     private final AtomicInteger idCounter;
     private final ExecutorService executor = Executors.newFixedThreadPool(4);
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private volatile boolean stopRequested = false; //volatile = it's visible to all threads
-
-
+    private final Timer cleanupTimer;
 
     public Broker() {
         this.endpoint = new Endpoint(PORT); // Bind to port 4711
         this.clients = new ClientCollection<>();
         this.idCounter = new AtomicInteger(1);
+        this.cleanupTimer = new Timer(true); // Create as daemon timer
+
+        // Start the cleanup timer task
+        cleanupTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                lock.writeLock().lock();
+                try {
+                    clients.removeExpiredClients(LEASE_TIME_MILLIS);
+                } finally {
+                    lock.writeLock().unlock();
+                }
+            }
+        }, CLEANUP_INTERVAL, CLEANUP_INTERVAL);
 
         new Thread(() -> {
             javax.swing.JOptionPane.showMessageDialog(null, "Press OK button to stop server");
             stopRequested = true;
+            cleanupTimer.cancel(); // Stop the cleanup timer when broker stops
         }).start();
     }
 
@@ -90,34 +107,48 @@ public class Broker {
     }
 
     private void register(Message message) {
-        String clientId = "tank" + idCounter.getAndIncrement();
         InetSocketAddress clientAddress = message.getSender();
 
+        // Check if this client already exists
+        int existingIndex = clients.indexOf(clientAddress);
+        if (existingIndex != -1) {
+            // Client exists, just update its timestamp
+            // The update is handled in ClientCollection.add()
+            String existingId = clients.getClientId(existingIndex);
+            clients.add(existingId, clientAddress);
+
+            // Send RegisterResponse with existing ID
+            Map<String, InetSocketAddress> snapshot = clients.toMap();
+            endpoint.send(clientAddress, new RegisterResponse(existingId, clientAddress, snapshot, LEASE_TIME_MILLIS));
+            System.out.println("Re-registered: " + existingId + " at " + clientAddress);
+            return;
+        }
+
+        // New client registration
+        String clientId = "tank" + idCounter.getAndIncrement();
         clients.add(clientId, clientAddress);
 
         // Find neighbors
-        int newIndex = clients.indexOf(clientAddress); // The index of the newly added client
+        int newIndex = clients.indexOf(clientAddress);
         InetSocketAddress leftNeighbor = clients.getLeftNeighorOf(newIndex);
         InetSocketAddress rightNeighbor = clients.getRightNeighorOf(newIndex);
 
         // Inform the new client about its left and right neighbors
-        endpoint.send(clientAddress, new NeighborUpdate(leftNeighbor, true));  // true = left
-        endpoint.send(clientAddress, new NeighborUpdate(rightNeighbor, false)); // false = right
+        endpoint.send(clientAddress, new NeighborUpdate(leftNeighbor, true));
+        endpoint.send(clientAddress, new NeighborUpdate(rightNeighbor, false));
 
-        // Inform the left neighbor about its new right neighbor (the new client)
-        endpoint.send(leftNeighbor, new NeighborUpdate(clientAddress, false)); // false = right
+        // Inform the left neighbor about its new right neighbor
+        endpoint.send(leftNeighbor, new NeighborUpdate(clientAddress, false));
 
-        // Inform the right neighbor about its new left neighbor (the new client)
-        endpoint.send(rightNeighbor, new NeighborUpdate(clientAddress, true)); // true = left
+        // Inform the right neighbor about its new left neighbor
+        endpoint.send(rightNeighbor, new NeighborUpdate(clientAddress, true));
 
         // Send RegisterResponse to the newly registered client
-        Map<String, InetSocketAddress> snapshot = clients.toMap(); // ❗ implement this if needed
-        endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress, snapshot));
+        Map<String, InetSocketAddress> snapshot = clients.toMap();
+        endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress, snapshot, LEASE_TIME_MILLIS));
 
+        System.out.println("Registered new: " + clientId + " at " + clientAddress);
 
-        System.out.println("Registered: " + clientId + " at " + clientAddress);
-
-        // 🔥 NEW: If this is the first client, send it the first Token
         if (clients.size() == 1) {
             endpoint.send(clientAddress, new Token());
             System.out.println("First Token sent to: " + clientAddress);

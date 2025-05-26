@@ -1,6 +1,8 @@
 package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.msgtypes.*;
@@ -11,6 +13,7 @@ import aqua.blatt1.common.Properties;
 
 public class ClientCommunicator {
 	private final Endpoint endpoint;
+	private Timer registrationTimer;  // Add field to track the timer
 
 	public ClientCommunicator() {
 		endpoint = new Endpoint();
@@ -93,12 +96,28 @@ public class ClientCommunicator {
 
 				if (payload instanceof RegisterResponse) {
 					RegisterResponse response = (RegisterResponse) payload;
-					tankModel.onRegistration(response.getId());
-
-					// Store own address:
+					
+					// First set the address and known clients
 					tankModel.setOwnAddress(response.getClientAddress());
 					tankModel.setKnownClients(response.getKnownClients());
 
+					// Then handle registration which creates the first fish
+					tankModel.onRegistration(response.getId());
+
+					// Cancel existing timer if it exists
+					if (registrationTimer != null) {
+						registrationTimer.cancel();
+					}
+
+					// Create new timer
+					registrationTimer = new Timer(true); // Create as daemon timer
+					long reregisterInterval = 1800; // Re-register 200ms before lease expires
+					registrationTimer.scheduleAtFixedRate(new TimerTask() {
+						@Override
+						public void run() {
+							tankModel.getClientForwarder().register();
+						}
+					}, reregisterInterval, reregisterInterval);
 				}
 				else if (payload instanceof HandoffRequest) {
 					tankModel.receiveFish(((HandoffRequest) payload).getFish());
@@ -132,6 +151,10 @@ public class ClientCommunicator {
 
 
 
+			}
+			// Clean up timer when receiver stops
+			if (registrationTimer != null) {
+				registrationTimer.cancel();
 			}
 			System.out.println("Receiver stopped.");
 		}

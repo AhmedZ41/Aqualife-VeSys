@@ -26,6 +26,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	private InetSocketAddress rightNeighbor;
 	private boolean hasToken = false;
 	private java.util.Timer tokenTimer;
+	private boolean isFirstRegistration = true;  // Add flag for first registration
 	// Enum for tracking input channels during snapshot recording
 	private enum RecordingState {
 		IDLE, LEFT, RIGHT, BOTH
@@ -54,7 +55,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	synchronized void onRegistration(String id) {
 		this.id = id;
-		newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
+		if (isFirstRegistration) {
+			newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
+			isFirstRegistration = false;
+		}
 	}
 
 	public synchronized void newFish(int x, int y) {
@@ -88,7 +92,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					recordingState = RecordingState.IDLE;
 					snapshotLocalCount++;
 					System.out.println("Snapshot: Counted last fish from LEFT — done");
-					maybeSendSnapshotToken(); // check if we’re done
+					maybeSendSnapshotToken(); // check if we're done
 				}
 			} else if (rightNeighbor != null && senderTankId.equals(getIdByAddress(rightNeighbor))) {
 				// Fish came from right neighbor
@@ -100,7 +104,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					recordingState = RecordingState.IDLE;
 					snapshotLocalCount++;
 					System.out.println("Snapshot: Counted last fish from RIGHT — done");
-					maybeSendSnapshotToken(); // check if we’re done
+					maybeSendSnapshotToken(); // check if we're done
 				}
 			}
 		}
@@ -414,6 +418,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public synchronized Map<String, InetSocketAddress> getKnownClients() {
 		return knownClients;
 	}
+
+	public ClientCommunicator.ClientForwarder getClientForwarder() {
+		return forwarder;
+	}
+
 	public synchronized void updateHomeAgent(String fishId, InetSocketAddress newLocation) {
 		if (isHomeOf(fishId)) {
 			homeAgent.put(fishId, newLocation);
