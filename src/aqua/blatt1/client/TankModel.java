@@ -26,6 +26,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	private InetSocketAddress rightNeighbor;
 	private boolean hasToken = false;
 	private java.util.Timer tokenTimer;
+	private boolean isFirstRegistration = true;  // Add flag for first registration
 	// Enum for tracking input channels during snapshot recording
 	private enum RecordingState {
 		IDLE, LEFT, RIGHT, BOTH
@@ -54,7 +55,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	synchronized void onRegistration(String id) {
 		this.id = id;
-		newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
+		if (isFirstRegistration) {
+			newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
+			isFirstRegistration = false;
+		}
 	}
 
 	public synchronized void newFish(int x, int y) {

@@ -32,11 +32,14 @@ public class ClientCollection<T> {
 
 	public ClientCollection<T> add(String id, T client) {
 		// Check if client already exists
-		int existingIndex = indexOf((InetSocketAddress) client);
-		if (existingIndex != -1) {
-			// Update timestamp of existing client
-			clients.get(existingIndex).clientInfo.updateTimestamp();
-			return this;
+		if (client instanceof InetSocketAddress address) {
+			for (int i = 0; i < clients.size(); i++) {
+				if (clients.get(i).clientInfo.getAddress().equals(address)) {
+					// Update timestamp of existing client
+					clients.get(i).clientInfo.updateTimestamp();
+					return this;
+				}
+			}
 		}
 		// Add new client
 		clients.add(new Client(id, client));
@@ -56,11 +59,18 @@ public class ClientCollection<T> {
 	}
 
 	public int indexOf(T client) {
-		InetSocketAddress address = (InetSocketAddress) client;
-		for (int i = 0; i < clients.size(); i++)
-			if (clients.get(i).clientInfo.getAddress().equals(address))
-				return i;
+		if (client instanceof InetSocketAddress address) {
+			for (int i = 0; i < clients.size(); i++) {
+				if (clients.get(i).clientInfo.getAddress().equals(address)) {
+					return i;
+				}
+			}
+		}
 		return -1;
+	}
+
+	public String getClientId(int index) {
+		return clients.get(index).id;
 	}
 
 	public T getClient(int index) {

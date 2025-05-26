@@ -107,33 +107,48 @@ public class Broker {
     }
 
     private void register(Message message) {
-        String clientId = "tank" + idCounter.getAndIncrement();
         InetSocketAddress clientAddress = message.getSender();
 
+        // Check if this client already exists
+        int existingIndex = clients.indexOf(clientAddress);
+        if (existingIndex != -1) {
+            // Client exists, just update its timestamp
+            // The update is handled in ClientCollection.add()
+            String existingId = clients.getClientId(existingIndex);
+            clients.add(existingId, clientAddress);
+
+            // Send RegisterResponse with existing ID
+            Map<String, InetSocketAddress> snapshot = clients.toMap();
+            endpoint.send(clientAddress, new RegisterResponse(existingId, clientAddress, snapshot, LEASE_TIME_MILLIS));
+            System.out.println("Re-registered: " + existingId + " at " + clientAddress);
+            return;
+        }
+
+        // New client registration
+        String clientId = "tank" + idCounter.getAndIncrement();
         clients.add(clientId, clientAddress);
 
         // Find neighbors
-        int newIndex = clients.indexOf(clientAddress); // The index of the newly added client
+        int newIndex = clients.indexOf(clientAddress);
         InetSocketAddress leftNeighbor = clients.getLeftNeighorOf(newIndex);
         InetSocketAddress rightNeighbor = clients.getRightNeighorOf(newIndex);
 
         // Inform the new client about its left and right neighbors
-        endpoint.send(clientAddress, new NeighborUpdate(leftNeighbor, true));  // true = left
-        endpoint.send(clientAddress, new NeighborUpdate(rightNeighbor, false)); // false = right
+        endpoint.send(clientAddress, new NeighborUpdate(leftNeighbor, true));
+        endpoint.send(clientAddress, new NeighborUpdate(rightNeighbor, false));
 
-        // Inform the left neighbor about its new right neighbor (the new client)
-        endpoint.send(leftNeighbor, new NeighborUpdate(clientAddress, false)); // false = right
+        // Inform the left neighbor about its new right neighbor
+        endpoint.send(leftNeighbor, new NeighborUpdate(clientAddress, false));
 
-        // Inform the right neighbor about its new left neighbor (the new client)
-        endpoint.send(rightNeighbor, new NeighborUpdate(clientAddress, true)); // true = left
+        // Inform the right neighbor about its new left neighbor
+        endpoint.send(rightNeighbor, new NeighborUpdate(clientAddress, true));
 
         // Send RegisterResponse to the newly registered client
-        Map<String, InetSocketAddress> snapshot = clients.toMap(); // ❗ implement this if needed
+        Map<String, InetSocketAddress> snapshot = clients.toMap();
         endpoint.send(clientAddress, new RegisterResponse(clientId, clientAddress, snapshot, LEASE_TIME_MILLIS));
 
-        System.out.println("Registered: " + clientId + " at " + clientAddress);
+        System.out.println("Registered new: " + clientId + " at " + clientAddress);
 
-        // 🔥 NEW: If this is the first client, send it the first Token
         if (clients.size() == 1) {
             endpoint.send(clientAddress, new Token());
             System.out.println("First Token sent to: " + clientAddress);
